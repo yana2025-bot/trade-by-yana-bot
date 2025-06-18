@@ -22,18 +22,45 @@ def is_news_time():
     return False
 
 def check_market():
+    import ta
+
+def check_market():
     try:
-        data = yf.download("EURUSD=X", period="5m", interval="30s")
-        closes = data['Close']
-        if len(closes) < 10:
+        data = yf.download("EURUSD=X", period="2d", interval="5m")
+
+        if data.empty or len(data) < 100:
+            print("Недостаточно данных")
             return None
 
-        last = closes[-1]
-        prev = closes[-2]
-        direction = "ВГОРУ" if last > prev else "ВНИЗ"
-        return direction
+        # Индикаторы
+        rsi = ta.momentum.RSIIndicator(data['Close'], window=14).rsi()
+        macd_line = ta.trend.MACD(data['Close']).macd()
+        macd_signal = ta.trend.MACD(data['Close']).macd_signal()
+        sma = ta.trend.SMAIndicator(data['Close'], window=20).sma_indicator()
+
+        # Последние значения
+        rsi_last = rsi.iloc[-1]
+        macd_last = macd_line.iloc[-1]
+        macd_sig_last = macd_signal.iloc[-1]
+        sma_last = sma.iloc[-1]
+        close_last = data['Close'].iloc[-1]
+
+        print(f"RSI: {rsi_last}, MACD: {macd_last}, Signal: {macd_sig_last}, SMA: {sma_last}, Price: {close_last}")
+
+        # Сигнал вверх
+        if rsi_last < 30 and macd_last > macd_sig_last and close_last > sma_last:
+            return "ВГОРУ"
+
+        # Сигнал вниз
+        elif rsi_last > 70 and macd_last < macd_sig_last and close_last < sma_last:
+            return "ВНИЗ"
+
+        return None
+
     except Exception as e:
         print("Market error:", e)
+        return None
+
         return None
 
 @bot.message_handler(commands=['start'])
